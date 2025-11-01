@@ -2,13 +2,16 @@ from sqlalchemy import String, Boolean, Float, Integer, Numeric
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import ForeignKey
 from decimal import Decimal
+from sqlalchemy import select, func
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import Base
 
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from app.models.categories import Category
+    from categories import Category
+    from reviews import Review
 
 class Product(Base):
     __tablename__ = "products"
@@ -25,3 +28,10 @@ class Product(Base):
 
     category: Mapped["Category"] = relationship("Category", back_populates="products")
     seller = relationship("User", back_populates="products")
+    reviews: Mapped[list["Review"]] = relationship("Review", uselist=True, back_populates="product")
+    rating: Mapped[float] = mapped_column(default=0.0)
+    
+    async def recalculating_rating(self, db: AsyncSession) -> None:
+        from app.models.reviews import Review
+        avg_rating = await db.scalar(select(func.avg(Review.grade)).where(Review.product_id == self.id, Review.is_active))
+        self.rating = avg_rating or 0.0
