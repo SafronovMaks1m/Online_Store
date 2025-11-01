@@ -15,6 +15,8 @@ from app.db_depends import get_async_db
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
+REFRESH_TOKEN_EXPIRE_DAYS = 7
+
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="users/token")
 
 def hash_password(password: str) -> str:
@@ -29,6 +31,15 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     Проверяет, соответствует ли введённый пароль сохранённому хешу.
     """
     return pwd_context.verify(plain_password, hashed_password)
+
+def create_refresh_token(data: dict):          # New
+    """
+    Создаёт рефреш-токен с длительным сроком действия.
+    """
+    to_encode = data.copy()
+    expire = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
 def create_access_token(data: dict):
@@ -70,3 +81,28 @@ async def get_current_user(token: str = Depends(oauth2_scheme),
     if user is None:
         raise credentials_exception
     return user
+
+
+async def get_current_seller(current_user: UserModel = Depends(get_current_user)):
+    """
+    Проверяет, что пользователь имеет роль 'seller'.
+    """
+    if current_user.role != "seller":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only sellers can perform this action")
+    return current_user
+
+async def get_current_buyer(current_user: UserModel = Depends(get_current_user)):
+    """
+    Проверяет, что пользователь имеет роль 'buyer'.
+    """
+    if current_user.role != "buyer":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only buyer can perform this action")
+    return current_user
+
+async def get_current_admin(current_user: UserModel = Depends(get_current_user)):
+    """
+    Проверяет, что пользователь имеет роль 'admin'.
+    """
+    if current_user.role != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only admin can perform this action")
+    return current_user

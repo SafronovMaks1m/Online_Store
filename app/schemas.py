@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional
 from pydantic import BaseModel, Field, ConfigDict, EmailStr
+from datetime import datetime
 
 
 class CategoryCreate(BaseModel):
@@ -53,6 +54,7 @@ class Product(BaseModel):
     stock: int = Field(description="Количество товара на складе")
     category_id: int = Field(description="ID категории")
     is_active: bool = Field(description="Активность товара")
+    rating: float = Field(description="Рейтинг продукта")
 
     model_config = ConfigDict(from_attributes=True)
     
@@ -61,10 +63,33 @@ class UserCreate(BaseModel):
     password: str = Field(min_length=8, description="Пароль (минимум 8 символов)")
     role: str = Field(default="buyer", pattern="^(buyer|seller)$", description="Роль: 'buyer' или 'seller'")
 
-
 class User(BaseModel):
     id: int
     email: EmailStr
     is_active: bool
     role: str
+    model_config = ConfigDict(from_attributes=True)
+
+class ReviewCreate(BaseModel):
+    """
+    Модель для создания и обновления отзыва
+    Используется в Post и Put запросах
+    """
+    product_id: int = Field(description="ID продукта, для которого пишется отзыв")
+    comment: Optional[str] = Field(None, description="Текст отзыва")
+    grade: int = Field(ge=1, le=5, description="Оценка товара")
+    
+class Review(BaseModel):
+    """
+    Модель для ответа с данными отзыва
+    Используется в Get-запросах
+    """
+    id: int = Field(description="Уникальный идентификатор товара")
+    user_id: int = Field(description="ID пользователя")
+    product_id: int = Field(description="ID продукта")
+    comment: Optional[str] = Field(None, description="Текст отзыва")
+    comment_date: datetime = Field(description="Дата и время написания отзыва")
+    grade: int = Field(ge=1, le=5, description="Оценка товара от 1 до 5")
+    is_active: bool = Field(description="Активность отзыва")
+    
     model_config = ConfigDict(from_attributes=True)
